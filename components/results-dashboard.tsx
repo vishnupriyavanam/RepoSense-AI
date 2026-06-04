@@ -1,5 +1,7 @@
 "use client"
 
+import jsPDF from "jspdf"
+
 import { useState } from "react"
 import { 
   Sparkles, 
@@ -33,6 +35,7 @@ import {
 
 interface ResultsDashboardProps {
   repoUrl: string
+  repoData: any
   onBack: () => void
 }
 
@@ -79,12 +82,53 @@ const mockData = {
   ]
 }
 
-export function ResultsDashboard({ repoUrl, onBack }: ResultsDashboardProps) {
+export function ResultsDashboard({
+  repoUrl,
+  repoData,
+  onBack,
+}: ResultsDashboardProps) {
+
   const [activeTab, setActiveTab] = useState("overview")
-  const repoName = repoUrl.replace("https://github.com/", "").replace(/\/$/, "") || mockData.overview.fullName
+  const analysis = repoData
+  const repo = analysis?.repo
+
+  const repoName =
+    repoData?.full_name ||
+    repoUrl.replace("https://github.com/", "").replace(/\/$/, "")
+
+  const handleExportPDF = () => {
+    const pdf = new jsPDF("p", "mm", "a4")
+
+    pdf.setFontSize(18)
+    pdf.text("RepoSense AI - Repository Analysis Report", 15, 20)
+
+    pdf.setFontSize(12)
+    pdf.text(`Repository: ${repo?.name || repoName}`, 15, 35)
+    pdf.text(`Description: ${repo?.description || "No description available"}`, 15, 45)
+    pdf.text(`Language: ${repo?.language || "Unknown"}`, 15, 55)
+    pdf.text(`Stars: ${repo?.stars ?? 0}`, 15, 65)
+    pdf.text(`Forks: ${repo?.forks ?? 0}`, 15, 75)
+    pdf.text(`Open Issues: ${repo?.issues ?? 0}`, 15, 85)
+
+    pdf.text(`Project Level: ${analysis?.projectLevel || "N/A"}`, 15, 100)
+    pdf.text(`Portfolio Score: ${analysis?.portfolioScore || "N/A"}`, 15, 110)
+
+    pdf.text("Recruiter View:", 15, 125)
+    pdf.text(pdf.splitTextToSize(analysis?.recruiterView || "No recruiter view available", 180), 15, 135)
+
+    pdf.text("Improvement Suggestions:", 15, 170)
+
+    const suggestions = analysis?.improvementSuggestions || []
+    suggestions.forEach((item: string, index: number) => {
+      pdf.text(`${index + 1}. ${item}`, 20, 180 + index * 8)
+    })
+
+    pdf.save("reposense-ai-report.pdf")
+  }
 
   return (
-    <div className="min-h-screen relative">
+    <div id="analysis-report" className="min-h-screen ...">
+    
       {/* Background */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/10 rounded-full blur-3xl" />
@@ -107,14 +151,17 @@ export function ResultsDashboard({ repoUrl, onBack }: ResultsDashboardProps) {
           </div>
           
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm" className="gap-2 border-border/50 hover:bg-secondary/50">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 border-border/50 hover:bg-secondary/50"
+              onClick={handleExportPDF}
+            >
               <Download className="w-4 h-4" />
-              <span className="hidden sm:inline">Export</span>
+              <span className="hidden sm:inline">Export PDF </span>
             </Button>
-            <Button variant="outline" size="sm" className="gap-2 border-border/50 hover:bg-secondary/50">
-              <Share2 className="w-4 h-4" />
-              <span className="hidden sm:inline">Share</span>
-            </Button>
+
+            
           </div>
         </div>
       </header>
@@ -129,26 +176,30 @@ export function ResultsDashboard({ repoUrl, onBack }: ResultsDashboardProps) {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-foreground">{repoName}</h1>
-              <p className="text-muted-foreground">{mockData.overview.description}</p>
+              <p className="text-muted-foreground">
+                {repo?.description || "No description available"}
+              </p>
             </div>
           </div>
           
           <div className="flex flex-wrap gap-4 text-sm">
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <Star className="w-4 h-4 text-yellow-500" />
-              <span>{mockData.overview.stars}</span>
+              <span>{repo?.stars}</span>
             </div>
+
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <GitFork className="w-4 h-4" />
-              <span>{mockData.overview.forks}</span>
+              <span>{repo?.forks}</span>
             </div>
+
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <Eye className="w-4 h-4" />
-              <span>{mockData.overview.watchers}</span>
+              <span>{repo?.issues}</span>
             </div>
             <Badge variant="secondary" className="bg-primary/10 text-primary border-0">
-              {mockData.overview.language}
-            </Badge>
+  {repo?.language}
+</Badge>
           </div>
         </div>
 
@@ -164,81 +215,89 @@ export function ResultsDashboard({ repoUrl, onBack }: ResultsDashboardProps) {
                 </div>
                 <h2 className="text-lg font-semibold text-foreground">AI Summary</h2>
               </div>
-              <p className="text-muted-foreground leading-relaxed">{mockData.aiSummary}</p>
+              <p className="text-muted-foreground leading-relaxed">
+                Repository: {repo?.name}
+                <br />
+                Language: {repo?.language}
+                <br />
+                Stars: {repo?.stars}
+                <br />
+                Forks: {repo?.forks}
+                <br />
+                Open Issues: {repo?.issues}
+                <br />
+                Description: {repo?.description || "No description available"}
+              </p>
             </div>
-
-            {/* Existing Features */}
+            {/* Project Level */}
             <div className="glass-card rounded-xl p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
-                  <CheckCircle2 className="w-5 h-5 text-green-500" />
-                </div>
-                <h2 className="text-lg font-semibold text-foreground">Existing Features</h2>
-              </div>
-              <div className="grid sm:grid-cols-2 gap-3">
-                {mockData.existingFeatures.map((feature, index) => (
-                  <div key={index} className="flex items-center gap-2 text-sm text-foreground">
-                    <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
-                    {feature}
-                  </div>
-                ))}
-              </div>
+              <h2 className="text-lg font-semibold mb-4">Project Level</h2>
+              <p>
+                {analysis?.projectLevel}
+              </p>
             </div>
 
-            {/* Suggested Features */}
+            {/* Resume Readiness */}
+            <div className="glass-card rounded-xl p-6">
+              <h2 className="text-lg font-semibold mb-4">Resume Readiness</h2>
+              <p>
+                {analysis?.resumeReadiness?.status === "Yes"
+                  ? "✅ Yes - Can be added to resume"
+                  : "❌ No - Needs improvement"}
+              </p>
+
+              <p className="text-muted-foreground mt-2">
+                {analysis?.resumeReadiness?.reason}
+              </p>
+            </div>
+
+            {/* Recruiter View */}
+            <div className="glass-card rounded-xl p-6">
+              <h2 className="text-lg font-semibold mb-4">Recruiter View</h2>
+              <p>
+                
+                  {analysis?.recruiterView}
+                
+              </p>
+            </div>
+
+            {/* Portfolio Score */}
+            <div className="glass-card rounded-xl p-6">
+              <h2 className="text-lg font-semibold mb-4">Portfolio Score</h2>
+              <p className="text-3xl font-bold">
+                {analysis?.portfolioScore}
+              </p>
+            </div>
+
+           
+            {/* Improvement Suggestions */}
             <div className="glass-card rounded-xl p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-lg bg-yellow-500/10 flex items-center justify-center">
                   <Lightbulb className="w-5 h-5 text-yellow-500" />
                 </div>
-                <h2 className="text-lg font-semibold text-foreground">Suggested Features</h2>
+                <h2 className="text-lg font-semibold text-foreground">
+                  Improvement Suggestions
+                </h2>
               </div>
-              <div className="space-y-3">
-                {mockData.suggestedFeatures.map((feature, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-sm font-medium text-primary">
-                        {index + 1}
-                      </div>
-                      <span className="font-medium text-foreground">{feature.title}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge 
-                        variant="outline" 
-                        className={`text-xs border-0 ${
-                          feature.priority === 'High' ? 'bg-red-500/10 text-red-400' :
-                          feature.priority === 'Medium' ? 'bg-yellow-500/10 text-yellow-400' :
-                          'bg-green-500/10 text-green-400'
-                        }`}
-                      >
-                        {feature.priority}
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
 
-            {/* Resume Tips */}
-            <div className="glass-card rounded-xl p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                  <Briefcase className="w-5 h-5 text-blue-500" />
-                </div>
-                <h2 className="text-lg font-semibold text-foreground">Resume Improvement Tips</h2>
-              </div>
               <div className="space-y-3">
-                {mockData.resumeTips.map((tip, index) => (
-                  <div key={index} className="flex gap-3 p-3 rounded-lg bg-secondary/30">
-                    <TrendingUp className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
-                    <p className="text-sm text-muted-foreground">{tip}</p>
-                  </div>
-                ))}
+                {analysis?.improvementSuggestions?.map(
+                  (item: string, index: number) => (
+                    <div
+                      key={index}
+                      className="p-3 rounded-lg bg-secondary/30"
+                    >
+                      🔥 {item}
+                    </div>
+                  )
+                )}
               </div>
             </div>
+             
           </div>
-
           {/* Right column */}
+          
           <div className="space-y-6">
             {/* Uniqueness Score */}
             <div className="glass-card rounded-xl p-6 glow-purple">
@@ -270,14 +329,16 @@ export function ResultsDashboard({ repoUrl, onBack }: ResultsDashboardProps) {
                       stroke="currentColor"
                       strokeWidth="12"
                       strokeLinecap="round"
-                      strokeDasharray={`${mockData.uniquenessScore * 4.02} 402`}
+                      strokeDasharray={`${(repoData?.uniquenessScore ?? 72) * 4.02} 402`}
                       className="text-primary"
                     />
                   </svg>
                   {/* Score text */}
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center">
-                      <span className="text-4xl font-bold text-foreground">{mockData.uniquenessScore}</span>
+                      <span className="text-4xl font-bold text-foreground">
+                        {repoData?.uniquenessScore ?? 72}
+                      </span>
                       <span className="text-sm text-muted-foreground block">/100</span>
                     </div>
                   </div>
@@ -311,7 +372,6 @@ export function ResultsDashboard({ repoUrl, onBack }: ResultsDashboardProps) {
                 ))}
               </div>
             </div>
-
             {/* Quick Stats */}
             <div className="glass-card rounded-xl p-6">
               <div className="flex items-center gap-3 mb-4">
@@ -320,27 +380,37 @@ export function ResultsDashboard({ repoUrl, onBack }: ResultsDashboardProps) {
                 </div>
                 <h2 className="text-lg font-semibold text-foreground">Quick Stats</h2>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-3 rounded-lg bg-secondary/30 text-center">
-                  <p className="text-2xl font-bold text-foreground">24</p>
-                  <p className="text-xs text-muted-foreground">Components</p>
+                  <p className="text-2xl font-bold text-foreground">
+                    {repoData?.repo?.stars ?? 0}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Stars</p>
                 </div>
+
                 <div className="p-3 rounded-lg bg-secondary/30 text-center">
-                  <p className="text-2xl font-bold text-foreground">12</p>
-                  <p className="text-xs text-muted-foreground">API Routes</p>
+                  <p className="text-2xl font-bold text-foreground">
+                    {repoData?.repo?.forks ?? 0}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Forks</p>
                 </div>
+
                 <div className="p-3 rounded-lg bg-secondary/30 text-center">
-                  <p className="text-2xl font-bold text-foreground">8.5k</p>
-                  <p className="text-xs text-muted-foreground">Lines of Code</p>
+                  <p className="text-2xl font-bold text-foreground">
+                    {repoData?.repo?.issues ?? 0}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Open Issues</p>
                 </div>
+
                 <div className="p-3 rounded-lg bg-secondary/30 text-center">
-                  <p className="text-2xl font-bold text-foreground">15</p>
-                  <p className="text-xs text-muted-foreground">Dependencies</p>
+                  <p className="text-2xl font-bold text-foreground">
+                    {repoData?.repo?.watchers ?? 0}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Watchers</p>
                 </div>
               </div>
             </div>
-
             {/* Security Score */}
             <div className="glass-card rounded-xl p-6">
               <div className="flex items-center gap-3 mb-4">

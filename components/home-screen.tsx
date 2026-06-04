@@ -52,9 +52,15 @@ export function HomeScreen({ onAnalyze, onLogout }: HomeScreenProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (repoUrl.trim()) {
-      onAnalyze(repoUrl)
+
+    const githubRegex = /^https:\/\/github\.com\/[^\/]+\/[^\/]+\/?$/
+
+    if (!githubRegex.test(repoUrl)) {
+      alert("Please enter a valid GitHub repository URL")
+      return
     }
+
+    onAnalyze(repoUrl)
   }
 
   return (
