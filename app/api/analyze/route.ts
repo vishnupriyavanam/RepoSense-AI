@@ -4,13 +4,6 @@ import { GoogleGenerativeAI } from "@google/generative-ai"
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "")
 
 export async function POST(request: Request) {
-    let repoData: any = null
-    let projectLevel = "Beginner"
-    let techStack: string[] = []
-    let overallScore = 55
-    let resumeReady = false
-    let missingFiles: any[] = []
-
     try {
         const { repoUrl } = await request.json()
 
@@ -29,7 +22,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "Repository not found" }, { status: 404 })
         }
 
-        repoData = await repoRes.json()
+        const repoData = await repoRes.json()
         const contents = contentsRes.ok ? await contentsRes.json() : []
         const languages = languagesRes.ok ? await languagesRes.json() : {}
 
@@ -38,58 +31,158 @@ export async function POST(request: Request) {
         const hasReadme = fileNames.some((name: string) => name.startsWith("readme"))
         const hasLicense = fileNames.some((name: string) => name.includes("license"))
         const hasContributing = fileNames.includes("contributing.md")
+        const hasEnvExample = fileNames.includes(".env.example")
         const hasPackageJson = fileNames.includes("package.json")
         const hasRequirements = fileNames.includes("requirements.txt")
         const hasPom = fileNames.includes("pom.xml")
         const hasManagePy = fileNames.includes("manage.py")
+        const hasTests = fileNames.some(
+            (name: string) => name.includes("test") || name.includes("spec")
+        )
 
-        techStack = Object.keys(languages)
+        let techStack = Object.keys(languages)
 
         if (hasPackageJson) techStack.push("React / Node.js / Next.js")
         if (hasRequirements) techStack.push("Python")
         if (hasPom) techStack.push("Spring Boot / Java")
         if (hasManagePy) techStack.push("Django")
 
+        techStack = [...new Set(techStack)]
+
+        const repoName = repoData.name.toLowerCase()
+        const description = (repoData.description || "").toLowerCase()
+        const language = repoData.language || "Unknown"
+
+        const isAIProject =
+            repoName.includes("ai") ||
+            description.includes("ai") ||
+            description.includes("machine learning") ||
+            description.includes("gemini") ||
+            description.includes("openai")
+
+        const isPortfolio =
+            repoName.includes("portfolio") || description.includes("portfolio")
+
+        const isEcommerce =
+            repoName.includes("shop") ||
+            repoName.includes("store") ||
+            description.includes("ecommerce") ||
+            description.includes("e-commerce")
+
+        const isChatApp =
+            repoName.includes("chat") || description.includes("chat")
+        const isLibraryOrFramework =
+            description.includes("library") ||
+            description.includes("framework") ||
+            repoName.includes("react") ||
+            repoName.includes("next") ||
+            repoName.includes("vue") ||
+            repoName.includes("angular")
+
         const documentationScore = hasReadme ? 80 : 35
         const folderStructureScore = contents.length > 8 ? 85 : 55
         const maintainabilityScore = repoData.open_issues_count < 20 ? 85 : 65
-        const codeQualityScore = repoData.stargazers_count > 100 ? 88 : 70
+        const codeQualityScore = hasTests ? 85 : repoData.stargazers_count > 100 ? 88 : 70
 
-        overallScore = Math.round(
+        const overallScore = Math.round(
             (documentationScore + folderStructureScore + maintainabilityScore + codeQualityScore) / 4
-        ) 
+        )
+
         const uniquenessScore = Math.min(
             100,
             Math.round(
                 (hasReadme ? 20 : 5) +
                 (hasLicense ? 10 : 0) +
                 (hasContributing ? 10 : 0) +
+                (hasEnvExample ? 10 : 0) +
+                (hasTests ? 15 : 0) +
                 (techStack.length >= 3 ? 20 : techStack.length * 5) +
-                (contents.length > 10 ? 20 : 10) +
-                (repoData.stargazers_count > 100 ? 20 : 5)
+                (contents.length > 10 ? 15 : 8)
             )
         )
 
-        projectLevel =
+        const projectLevel =
             overallScore >= 80 ? "Advanced" : overallScore >= 60 ? "Intermediate" : "Beginner"
 
-        resumeReady = overallScore >= 65 && hasReadme
+        const resumeReady = overallScore >= 65 && hasReadme
 
-        missingFiles = [
+        const missingFiles = [
             { name: "README.md", present: hasReadme },
             { name: "LICENSE", present: hasLicense },
             { name: "CONTRIBUTING.md", present: hasContributing },
-            { name: ".env.example", present: fileNames.includes(".env.example") },
-            {
-                name: "Tests",
-                present: fileNames.some(
-                    (name: string) => name.includes("test") || name.includes("spec")
-                ),
-            },
+            { name: ".env.example", present: hasEnvExample },
+            { name: "Tests", present: hasTests },
         ]
 
-        let aiResponse =
-            "Basic GitHub analysis completed. Gemini AI response was not generated."
+        const improvementSuggestions = [
+            !hasReadme &&
+            "Add a professional README with screenshots, setup steps, features, tech stack, and project architecture",
+
+            !isLibraryOrFramework &&
+            !hasEnvExample &&
+            "Add a .env.example file so recruiters can understand required environment variables",
+
+            !hasLicense &&
+            "Add a LICENSE file to make the project look more open-source ready",
+
+            !hasContributing &&
+            "Add CONTRIBUTING.md to show open-source collaboration readiness",
+
+            !hasTests &&
+            !isLibraryOrFramework &&
+            "Add unit tests for important logic and API routes",
+
+            !isLibraryOrFramework &&
+            !repoData.homepage &&
+            "Add a live demo link to improve recruiter trust",
+
+            repoData.open_issues_count > 0 &&
+            "Resolve open GitHub issues or document known limitations clearly",
+
+            isAIProject &&
+            "Add AI response examples, prompt strategy, fallback handling, and model limitation notes",
+
+            isAIProject &&
+            "Make improvement suggestions project-specific instead of showing generic tips",
+
+            isPortfolio &&
+            "Add case studies, resume download, contact form, and measurable project impact",
+
+            isEcommerce &&
+            "Add cart flow, payment integration, order history, product filters, and admin dashboard",
+
+            isChatApp &&
+            "Add real-time messaging using WebSockets, typing indicators, and message read status",
+
+            !isLibraryOrFramework &&
+            language === "JavaScript" &&
+            "Consider migrating important parts to TypeScript for better maintainability",
+
+            isLibraryOrFramework &&
+            "Add more beginner-friendly usage examples and contribution guide improvements",
+
+            isLibraryOrFramework &&
+            "Improve issue triaging, documentation navigation, and developer onboarding",
+
+            "Add GitHub Actions workflow for linting and build checks",
+
+            !isLibraryOrFramework &&
+            "Deploy the project on Vercel, Render, or Railway and add the deployed link in README",
+        ].filter(Boolean)
+        const roadmap = [
+            "Week 1: Improve README, add screenshots, add .env.example, and clean project structure",
+            isAIProject
+                ? "Week 2: Improve AI prompt logic, add project-type detection, and handle AI fallback properly"
+                : isEcommerce
+                    ? "Week 2: Add cart, payment flow, product filters, and order management"
+                    : isChatApp
+                        ? "Week 2: Add WebSocket-based real-time messaging and user presence"
+                        : "Week 2: Improve core features, validations, empty states, and error handling",
+            "Week 3: Add tests, GitHub Actions, and security improvements",
+            "Week 4: Deploy project, add live demo link, and prepare resume-ready bullet points",
+        ]
+
+        let aiResponse = "Basic GitHub analysis completed. Gemini AI response was not generated."
 
         try {
             const model = genAI.getGenerativeModel({
@@ -104,6 +197,11 @@ Description: ${repoData.description}
 Stars: ${repoData.stargazers_count}
 Forks: ${repoData.forks_count}
 Language: ${repoData.language}
+Tech Stack: ${techStack.join(", ")}
+Missing Files: ${missingFiles
+                    .filter((file) => !file.present)
+                    .map((file) => file.name)
+                    .join(", ")}
 
 Give:
 1. Professional AI Summary
@@ -130,7 +228,7 @@ Keep it concise.
                 language: repoData.language || "Unknown",
             },
             projectLevel,
-            techStack: [...new Set(techStack)],
+            techStack,
             scores: {
                 codeQuality: codeQualityScore,
                 documentation: documentationScore,
@@ -146,21 +244,8 @@ Keep it concise.
             },
             recruiterView: aiResponse,
             missingFiles,
-            improvementSuggestions: [
-                "Add detailed README with screenshots and setup steps",
-                "Add live demo link",
-                "Add authentication and authorization",
-                "Add unit and integration tests",
-                "Add CI/CD pipeline using GitHub Actions",
-                "Add .env.example file",
-                "Deploy the project on Vercel, Render, or Railway",
-            ],
-            roadmap: [
-                "Week 1: Improve README, add screenshots, and clean folder structure",
-                "Week 2: Add authentication, validations, and better UI states",
-                "Week 3: Add tests, GitHub Actions, and security improvements",
-                "Week 4: Deploy project, add live demo link, and prepare resume points",
-            ],
+            improvementSuggestions,
+            roadmap,
             uniquenessScore,
             portfolioScore: `${Math.min(10, Math.max(5, Math.round(overallScore / 10)))}/10`,
         })
