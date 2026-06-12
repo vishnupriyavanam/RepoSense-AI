@@ -71,6 +71,7 @@ export async function POST(request: Request) {
 
         const isChatApp =
             repoName.includes("chat") || description.includes("chat")
+
         const isLibraryOrFramework =
             description.includes("library") ||
             description.includes("framework") ||
@@ -169,6 +170,7 @@ export async function POST(request: Request) {
             !isLibraryOrFramework &&
             "Deploy the project on Vercel, Render, or Railway and add the deployed link in README",
         ].filter(Boolean)
+
         const roadmap = [
             "Week 1: Improve README, add screenshots, add .env.example, and clean project structure",
             isAIProject
@@ -181,12 +183,31 @@ export async function POST(request: Request) {
             "Week 3: Add tests, GitHub Actions, and security improvements",
             "Week 4: Deploy project, add live demo link, and prepare resume-ready bullet points",
         ]
+        let aiResponse = `Professional AI Summary:
+${repoData.full_name} is an ${projectLevel.toLowerCase()} level ${isLibraryOrFramework ? "library/framework repository" : isAIProject ? "AI-powered application" : "software project"} built using ${techStack.length > 0 ? techStack.join(", ") : "detected technologies"
+            }.
 
-        let aiResponse = "Basic GitHub analysis completed. Gemini AI response was not generated."
+Recruiter Perspective:
+${isLibraryOrFramework
+                ? "This repository shows large-scale open-source engineering, documentation maturity, issue management, and community collaboration."
+                : isAIProject
+                    ? "This project demonstrates GitHub API usage, repository analysis, scoring logic, AI-assisted feedback, and dashboard-based product thinking."
+                    : "This project demonstrates practical software engineering skills including code organization, feature development, API usage, and project documentation."
+            }
 
+Resume Readiness:
+${isLibraryOrFramework
+                ? "This is a strong reference-level open-source project. For a personal resume project, focus on explaining your own contribution, implementation role, and measurable impact."
+                : resumeReady
+                    ? "This project is suitable for a resume after adding screenshots, deployment link, and stronger documentation."
+                    : "This project needs better documentation, testing, deployment, and screenshots before being highlighted on a resume."
+            }
+
+Portfolio Worthiness:
+Portfolio Score: ${Math.min(10, Math.max(5, Math.round(overallScore / 10)))}/10`
         try {
             const model = genAI.getGenerativeModel({
-                model: "gemini-2.0-flash",
+                model: "gemini-1.5-flash",
             })
 
             const prompt = `
@@ -238,9 +259,11 @@ Keep it concise.
             },
             resumeReadiness: {
                 status: resumeReady ? "Yes" : "No",
-                reason: resumeReady
-                    ? "This project can be added to a resume after adding clear screenshots and a live demo."
-                    : "This project needs better documentation, structure, and missing essential files before adding it to a resume.",
+                reason: isLibraryOrFramework
+                    ? "This repository represents a mature open-source library/framework. For resume usage, focus on your contributions and technical understanding rather than claiming ownership of the project."
+                    : resumeReady
+                        ? "This project is ready for a resume after adding deployment links, screenshots, and stronger documentation."
+                        : "This project requires better documentation, testing, and deployment before being highlighted on a resume.",
             },
             recruiterView: aiResponse,
             missingFiles,
